@@ -30,7 +30,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func sceneDidBecomeActive(_: UIScene) {}
 
     func sceneWillResignActive(_: UIScene) {}
-    
+
     func sceneWillEnterForeground(_: UIScene) {}
 
     func sceneDidEnterBackground(_: UIScene) {}

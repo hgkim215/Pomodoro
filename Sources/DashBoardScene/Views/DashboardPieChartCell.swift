@@ -26,7 +26,7 @@ final class DashboardPieChartCell: UICollectionViewCell {
     private let donutPieChartView = PieChartView().then { chart in
         chart.noDataText = "출력 데이터가 없습니다."
         chart.noDataFont = .systemFont(ofSize: 20)
-        chart.noDataTextColor = .black
+        chart.noDataTextColor = .red
         chart.holeColor = .clear
         chart.backgroundColor = .clear
         chart.drawSlicesUnderHoleEnabled = false
@@ -134,28 +134,43 @@ final class DashboardPieChartCell: UICollectionViewCell {
                 tagColors[tag.tagName] = color
             }
         }
-        let pieChartDataEntries = sortedFocusTimePerTag.map { (tag: String, time: Int) -> PieChartDataEntry in
-            let entryColor = tagColors[tag] ?? .gray
-            return PieChartDataEntry(value: Double(time), label: tag, data: entryColor as AnyObject)
-        }
-
-        let pieChartDataSet = PieChartDataSet(entries: pieChartDataEntries, label: "").then {
-            var dataSetColors: [UIColor] = []
-            for entry in pieChartDataEntries {
-                if let color = entry.data as? UIColor {
-                    dataSetColors.append(color)
-                }
-            }
-            $0.colors = dataSetColors
-            $0.drawValuesEnabled = false
-        }
-
-        let pieChartData = PieChartData(dataSet: pieChartDataSet)
-        donutPieChartView.data = pieChartData
 
         let totalFocusTime = focusTimePerTag.reduce(0) { $0 + $1.value }
-        updatePieChartText(totalFocusTime: totalFocusTime)
-        updateLegendLabel(with: focusTimePerTag, tagColors: tagColors)
+
+        if sortedFocusTimePerTag.isEmpty || totalFocusTime == 0 {
+            let emptyEntry = PieChartDataEntry(value: 1, label: "없음", data: UIColor.gray as AnyObject)
+            let pieChartDataSet = PieChartDataSet(entries: [emptyEntry], label: "").then {
+                $0.colors = [.gray]
+                $0.drawValuesEnabled = false
+            }
+            let pieChartData = PieChartData(dataSet: pieChartDataSet)
+            donutPieChartView.data = pieChartData
+
+            updatePieChartText(totalFocusTime: 0)
+            updateLegendLabel(with: ["없음": 0], tagColors: ["없음": .gray])
+        } else {
+            let pieChartDataEntries = sortedFocusTimePerTag.map { (tag: String, time: Int) -> PieChartDataEntry in
+                let entryColor = tagColors[tag] ?? .gray
+                return PieChartDataEntry(value: Double(time), label: tag, data: entryColor as AnyObject)
+            }
+
+            let pieChartDataSet = PieChartDataSet(entries: pieChartDataEntries, label: "").then {
+                var dataSetColors: [UIColor] = []
+                for entry in pieChartDataEntries {
+                    if let color = entry.data as? UIColor {
+                        dataSetColors.append(color)
+                    }
+                }
+                $0.colors = dataSetColors
+                $0.drawValuesEnabled = false
+            }
+
+            let pieChartData = PieChartData(dataSet: pieChartDataSet)
+            donutPieChartView.data = pieChartData
+
+            updatePieChartText(totalFocusTime: totalFocusTime)
+            updateLegendLabel(with: focusTimePerTag, tagColors: tagColors)
+        }
     }
 
     private func setLegendLabel() {
@@ -205,7 +220,7 @@ final class DashboardPieChartCell: UICollectionViewCell {
         var timeText = ""
         if days > 0 { timeText += "\(days)일 " }
         if hours > 0 || days > 0 { timeText += "\(hours)시간 " }
-        timeText += "\(minutes * 4)분"
+        if focusTime == 0 { timeText += "---분" } else { timeText += "\(minutes * 4)분" }
         return timeText
     }
 
@@ -235,7 +250,9 @@ final class DashboardPieChartCell: UICollectionViewCell {
 
             let timeText = parsingTimes(from: focusTime)
             let percentage = (Double(focusTime) / Double(totalFocusTime)) * 100
-            timeRatioTextLabel.text = "\(timeText) (\(String(format: "%.0f", percentage))%)"
+            let displayPercentage = percentage.isNaN ? 0 : percentage
+
+            timeRatioTextLabel.text = "\(timeText) (\(String(format: "%.0f", displayPercentage))%)"
 
             let labelandColorStackView = setupStackView(axis: .horizontal, spacing: 5)
             labelandColorStackView.addArrangedSubview(tagColor)
@@ -253,30 +270,39 @@ final class DashboardPieChartCell: UICollectionViewCell {
     }
 
     private func updatePieChartText(totalFocusTime: Int) {
-        let days = totalFocusTime / (24 * 60)
-        let hours = (totalFocusTime % (24 * 60)) / 60
-        let minutes = totalFocusTime % 60
-        var totalTimeText = "합계\n"
-        if days > 0 {
-            totalTimeText += "\(days)일"
-        }
-        if hours > 0 || days > 0 {
-            totalTimeText += "\(hours)시간"
-        }
-        totalTimeText += "\(minutes * 4)분"
+        if totalFocusTime == 0 {
+            chartCenterText.text = "합계\n-"
+            chartCenterText.textColor = .pomodoro.primary900
+            chartCenterText.font = .pomodoroFont.heading4()
+            chartCenterText.textAlignment = .center
+            chartCenterText.numberOfLines = 0
+        } else {
+            let days = totalFocusTime / (24 * 60)
+            let hours = (totalFocusTime % (24 * 60)) / 60
+            let minutes = totalFocusTime % 60
+            var totalTimeText = "합계\n"
 
-        chartCenterText.text = totalTimeText
-        chartCenterText.then {
-            $0.textColor = .pomodoro.blackHigh
-            $0.text = totalTimeText
-            $0.font = .pomodoroFont.heading3()
-            $0.textAlignment = .center
-            $0.numberOfLines = 0
-            $0.setAttributedTextFontandColor(
-                targetString: "합계",
-                font: .pomodoroFont.heading4(),
-                color: .pomodoro.blackMedium
-            )
+            if days > 0 {
+                totalTimeText += "\(days)일"
+            }
+            if hours > 0 || days > 0 {
+                totalTimeText += "\(hours)시간"
+            }
+            totalTimeText += "\(minutes * 4)분"
+
+            chartCenterText.text = totalTimeText
+            chartCenterText.then {
+                $0.textColor = .pomodoro.blackHigh
+                $0.text = totalTimeText
+                $0.font = .pomodoroFont.heading3()
+                $0.textAlignment = .center
+                $0.numberOfLines = 0
+                $0.setAttributedTextFontandColor(
+                    targetString: "합계",
+                    font: .pomodoroFont.heading4(),
+                    color: .pomodoro.primary900
+                )
+            }
         }
     }
 

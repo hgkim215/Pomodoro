@@ -105,7 +105,13 @@ final class TagConfigurationViewController: UIViewController, UITextFieldDelegat
                 .show(on: self)
             return
         }
-
+        guard let selectedColorIndex else {
+            PomodoroPopupBuilder()
+                .add(body: "태그 색상을 선택해주세요.")
+                .add(button: .confirm(title: "확인", action: {}))
+                .show(on: self)
+            return
+        }
         do {
             let existingTag = try RealmService.read(Tag.self).filter("tagName == %@", tagText).first
             if existingTag != nil {
@@ -117,11 +123,11 @@ final class TagConfigurationViewController: UIViewController, UITextFieldDelegat
             } else {
                 let newTag = Tag(
                     tagName: tagText,
-                    colorIndex: selectedColorIndex ?? "defaultColor",
+                    colorIndex: selectedColorIndex,
                     position: calculateNextPosition()
                 )
                 RealmService.write(newTag)
-                delegate?.createTag(tag: tagText, color: selectedColorIndex ?? "defaultColor", position: newTag.position)
+                delegate?.createTag(tag: tagText, color: selectedColorIndex, position: newTag.position)
                 dismiss(animated: true, completion: nil)
             }
         } catch {
@@ -221,7 +227,7 @@ final class TagConfigurationViewController: UIViewController, UITextFieldDelegat
         colorPaletteStackView.axis = .vertical
         colorPaletteStackView.distribution = .fillEqually
         colorPaletteStackView.spacing = 20
-        // 2행 4열
+
         let rows = [UIStackView(), UIStackView()]
         for row in rows {
             row.axis = .horizontal
@@ -262,11 +268,11 @@ final class TagConfigurationViewController: UIViewController, UITextFieldDelegat
 
     func showRingEffect(around button: UIButton, color: UIColor) {
         let ringLayer = CAShapeLayer().then {
-            let ringPath = UIBezierPath(ovalIn: button.bounds.insetBy(dx: -10, dy: -10))
+            let ringPath = UIBezierPath(ovalIn: button.bounds.insetBy(dx: -7, dy: -7))
             $0.path = ringPath.cgPath
             $0.fillColor = UIColor.clear.cgColor
             $0.strokeColor = color.cgColor
-            $0.lineWidth = 3
+            $0.lineWidth = 1.5
         }
 
         button.layer.addSublayer(ringLayer)
@@ -281,7 +287,6 @@ final class TagConfigurationViewController: UIViewController, UITextFieldDelegat
         }
     }
 
-    // 인덱스를 string으로 변환
     func indexToString(_ index: Int) -> String {
         switch index {
         case 0:
@@ -307,6 +312,14 @@ final class TagConfigurationViewController: UIViewController, UITextFieldDelegat
 }
 
 extension TagConfigurationViewController {
+    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
+        guard let text = textField.text else {
+            return true
+        }
+        let newLength = text.count + string.count - range.length
+        return newLength <= 4
+    }
+
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         textField.resignFirstResponder()
     }

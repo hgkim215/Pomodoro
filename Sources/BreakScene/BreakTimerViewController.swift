@@ -73,8 +73,7 @@ final class BreakTimerViewController: UIViewController, TimeSettingViewControlle
         startTimer()
 
         if let realmOption = try? RealmService.read(Option.self).first,
-           realmOption.isTimerEffect
-        {
+           realmOption.isTimerEffect {
             startAnimationTimer()
         }
 
@@ -99,12 +98,6 @@ final class BreakTimerViewController: UIViewController, TimeSettingViewControlle
 // MARK: - Action
 
 extension BreakTimerViewController {
-    @objc private func openTagModal() {
-        let modalViewController = TagModalViewController()
-        modalViewController.modalPresentationStyle = .fullScreen
-        present(modalViewController, animated: true, completion: nil)
-    }
-
     @objc private func handleLongPress(gestureRecognizer: UILongPressGestureRecognizer) {
         progressBar.isHidden = false
         longPressGuideLabel.isHidden = true
@@ -161,7 +154,7 @@ extension BreakTimerViewController {
     }
 
     @objc private func timeSetting() {
-        let timeSettingviewController = TimeSettingViewController(isSelectedTime: false, delegate: self)
+        let timeSettingviewController = TimeSettingViewController(delegate: self)
         navigationController?.pushViewController(timeSettingviewController, animated: true)
     }
 
@@ -202,6 +195,9 @@ extension BreakTimerViewController {
             self.breakLabel.textColor = self.breakLabel.frame.minY < timerBackgroundMinY ?? .infinity
                 ? .black
                 : .white
+            self.longPressGuideLabel.textColor = self.breakLabel.frame.minY < timerBackgroundMinY ?? .infinity
+                ? .lightGray
+                : .white
         }
         timer?.fire()
     }
@@ -239,7 +235,7 @@ extension BreakTimerViewController {
         }
         longPressGuideLabel.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.bottom.equalTo(view.snp.bottom).offset(-50)
+            make.bottom.equalTo(view.snp.bottom).offset(-112)
         }
         progressBar.snp.makeConstraints { make in
             make.centerX.equalToSuperview()

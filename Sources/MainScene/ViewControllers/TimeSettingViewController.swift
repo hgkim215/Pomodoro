@@ -19,22 +19,16 @@ final class TimeSettingViewController: UIViewController {
     private var centerIndexPath: IndexPath?
     private let timeSelectRange = 5
     var selectedTime: Int = 0
+    private let pomodoroTimeManager = PomodoroTimeManager.shared
     private var endTime: String?
     private var isSelectedCellBiggerfive: Bool = true
     private let stepManager = PomodoroStepManger()
 
     private weak var delegate: TimeSettingViewControllerDelegate?
 
-    init(
-        isSelectedTime: Bool,
-        delegate: TimeSettingViewControllerDelegate
-    ) {
+    init(delegate: TimeSettingViewControllerDelegate) {
         super.init(nibName: nil, bundle: nil)
-
-        let recent = try? RealmService.read(Pomodoro.self).last
-        selectedTime = recent?.phaseTime ?? 25
-
-        self.isSelectedTime = isSelectedTime
+        selectedTime = pomodoroTimeManager.maxTime
         self.delegate = delegate
     }
 
@@ -53,7 +47,7 @@ final class TimeSettingViewController: UIViewController {
     }
 
     private lazy var closeButton = UIButton().then {
-        $0.setImage(UIImage(systemName: "xmark"), for: .normal)
+        $0.setImage(UIImage(named: "closeButton"), for: .normal)
         $0.tintColor = .pomodoro.blackMedium
         $0.addTarget(self, action: #selector(didTapCloseButton), for: .touchUpInside)
     }
@@ -107,8 +101,10 @@ final class TimeSettingViewController: UIViewController {
         setupConstraints()
     }
 
-    override func viewDidDisappear(_: Bool) {
-        delegate?.didSelectTime(time: Int(centerIndexPath?.item ?? 0))
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        let initialIndexPath = IndexPath(item: selectedTime, section: 0)
+        centerCell(at: initialIndexPath)
     }
 
     private func setUpLayout() {
@@ -128,7 +124,7 @@ final class TimeSettingViewController: UIViewController {
             make.top.equalToSuperview().offset(24)
         }
         closeButton.snp.makeConstraints { make in
-            make.top.equalToSuperview().offset(24)
+            make.centerY.equalTo(timeSettingTitleLabel)
             make.trailing.equalToSuperview().offset(-26)
             make.width.equalTo(15)
             make.height.equalTo(15)
@@ -163,9 +159,16 @@ final class TimeSettingViewController: UIViewController {
         }
     }
 
+    private func centerCell(at indexPath: IndexPath) {
+        DispatchQueue.main.async {
+            self.collectionView.scrollToItem(at: indexPath, at: .centeredHorizontally, animated: false)
+            self.updateCellPositions()
+        }
+    }
+
     private func calculateEndTime(time selectedTime: Int) {
         let formatterTime = DateFormatter()
-        formatterTime.dateFormat = "mm:ss"
+        formatterTime.dateFormat = "hh:mm"
         let currentTime = Date()
 
         guard let endTime = Calendar.current.date(
@@ -190,7 +193,7 @@ final class TimeSettingViewController: UIViewController {
 
 extension TimeSettingViewController: UICollectionViewDelegate, UICollectionViewDataSource {
     func collectionView(_: UICollectionView, numberOfItemsInSection _: Int) -> Int {
-        150
+        151
     }
 
     func collectionView(
