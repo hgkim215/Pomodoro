@@ -8,14 +8,19 @@
 import Foundation
 import UserNotifications
 
+enum UserDefaultsKeys {
+    static let isFirstVisit = "isFirstVisit"
+    static let isNeedRestore = "isNeedRestore"
+    static let exitDate = "exitTime"
+    static let currentTime = "currentTime"
+    static let finishTime = "finishTime"
+}
+
 final class PomodoroTimeManager {
     static let shared = PomodoroTimeManager()
-
     private init() {}
 
-    private var pomodoroTimer: Timer?
-
-    private let userDefaults = UserDefaults.standard
+    var pomodoroTimer: Timer?
     private let notificationId = UUID().uuidString
 
     private(set) var currentTime = 0
@@ -24,16 +29,18 @@ final class PomodoroTimeManager {
         currentTime = curr
     }
 
-    private(set) var maxTime = 0
+    private(set) var finishTime = 0
 
-    func setupMaxTime(time: Int) {
-        maxTime = time
+    func setupFinishTime(time: Int) {
+        finishTime = time
     }
 
-    private(set) var isRestored: Bool = false
+    // 다시 불러오는 과정이 필요하면 True, 아니면 False
+    private(set) var isNeedRestore: Bool = false
 
-    func setupIsRestored(bool: Bool) {
-        isRestored = bool
+    func setupIsNeedRestore(bool: Bool) {
+        isNeedRestore = bool
+        UserDefaults.standard.set(isNeedRestore, forKey: UserDefaultsKeys.isNeedRestore)
     }
 
     private(set) var isStarted: Bool = false
@@ -43,8 +50,13 @@ final class PomodoroTimeManager {
     }
 
     func startTimer(timerBlock: @escaping ((Timer, Int, Int) -> Void)) {
+        guard finishTime > 0 else {
+            print("Error: maxTime must be greater than 0. Current finishTime: \(finishTime)")
+            return
+        }
+
         pomodoroTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { timer in
-            timerBlock(timer, self.currentTime + 1, self.maxTime)
+            timerBlock(timer, self.currentTime + 1, self.finishTime)
             self.currentTime += 1
         }
         pomodoroTimer?.fire()
@@ -52,43 +64,58 @@ final class PomodoroTimeManager {
 
     func stopTimer(completion: () -> Void) {
         pomodoroTimer?.invalidate()
+        pomodoroTimer = nil
         currentTime = 0
 
         let recent = try? RealmService.read(Pomodoro.self).last
-        maxTime = (recent?.phaseTime ?? 25) * 60
+        finishTime = (recent?.phaseTime ?? 25) * 60
 
         completion()
     }
 
     func saveTimerInfo() {
-        let lastSavedDate = Date.now
-        isRestored = false
+        Log.debug("Save Timer Info")
 
-        userDefaults.set(lastSavedDate, forKey: "realTime")
-        userDefaults.set(currentTime, forKey: "currentTime")
-        userDefaults.set(maxTime, forKey: "maxTime")
+        let exitDate = Date().timeIntervalSince1970
+        isNeedRestore = true
+        UserDefaults.standard.set(isNeedRestore, forKey: UserDefaultsKeys.isNeedRestore)
+
+        UserDefaults.standard.set(exitDate, forKey: UserDefaultsKeys.exitDate)
+        UserDefaults.standard.set(currentTime, forKey: UserDefaultsKeys.currentTime)
+        UserDefaults.standard.set(finishTime, forKey: UserDefaultsKeys.finishTime)
     }
 
     func restoreTimerInfo() {
-        guard let previousTime = userDefaults.object(forKey: "realTime") as? Date,
-              let existCurrentTime = userDefaults.object(forKey: "currentTime") as? Int,
-              let existMaxTime = userDefaults.object(forKey: "maxTime") as? Int
+        guard let lastExitDate = UserDefaults.standard.object(forKey: UserDefaultsKeys.exitDate) as? TimeInterval,
+              let existCurrentTime = UserDefaults.standard.object(forKey: UserDefaultsKeys.currentTime) as? Int,
+              let existFinishTime = UserDefaults.standard.object(forKey: UserDefaultsKeys.finishTime) as? Int
         else {
+            setupDefaultTimer()
             return
         }
 
-        let realTime = Date.now
+        let currentDate = Date().timeIntervalSince1970
+        let elapsedTime = Int(currentDate - lastExitDate)
+        let updatedCurrentTime = min(existCurrentTime + elapsedTime, existFinishTime)
 
-        let updatedCurrTime = existCurrentTime + Int(realTime.timeIntervalSince(previousTime))
-        maxTime = existMaxTime
-
-        if maxTime > updatedCurrTime {
-            isRestored = true
-            currentTime = updatedCurrTime
+        if updatedCurrentTime < existFinishTime {
+            currentTime = updatedCurrentTime
+            finishTime = existFinishTime
+            isNeedRestore = false
+            UserDefaults.standard.set(isNeedRestore, forKey: UserDefaultsKeys.isNeedRestore)
         } else {
-            let recent = try? RealmService.read(Pomodoro.self).last
-            maxTime = (recent?.phaseTime ?? 25) * 60
-            currentTime = 0
+            setupDefaultTimer()
         }
+    }
+
+    private func setupDefaultTimer() {
+        Log.debug("setupDefaultTimer")
+        let recent = try? RealmService.read(Pomodoro.self).last
+        Log.debug("phaseTime: \(recent?.phaseTime)")
+        finishTime = recent?.phaseTime ?? 1000
+        currentTime = 0
+
+        isNeedRestore = false
+        UserDefaults.standard.set(isNeedRestore, forKey: UserDefaultsKeys.isNeedRestore)
     }
 }

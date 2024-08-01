@@ -87,7 +87,7 @@ final class DashboardStatusCell: UICollectionViewCell {
         let totalParticipateCount = participateDates.count
         let filteredDataCount = filteredData.count
         let totalSuccessCount = filteredData.filter(\.isSuccess).count
-        let totalFailureCount = filteredData.filter { !$0.isSuccess }.count
+        let totalFailureCount = filteredData.filter { !$0.isSuccess && !$0.isIng }.count
 
         participateLabel.text = "\(totalParticipateCount)번"
         totalStatusCircleView.updateStatus(count: filteredDataCount)

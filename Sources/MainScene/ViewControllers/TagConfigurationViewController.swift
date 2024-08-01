@@ -12,7 +12,11 @@ import SnapKit
 import Then
 import UIKit
 
-final class TagConfigurationViewController: UIViewController, UITextFieldDelegate {
+protocol TagConfigurationViewControllerDelegate: AnyObject {
+    func didAddNewTag()
+}
+
+final class TagConfigurationViewController: UIViewController {
     // TODO: Realm Tag write
 
     private var selectedColorIndex: String?
@@ -44,6 +48,7 @@ final class TagConfigurationViewController: UIViewController, UITextFieldDelegat
         textField.font = .pomodoroFont.heading6()
         textField.delegate = self
         textField.textAlignment = .left
+        textField.tintColor = .black
         let bottomLine = UIView()
         bottomLine.backgroundColor = .black
         textField.addSubview(bottomLine)
@@ -55,8 +60,10 @@ final class TagConfigurationViewController: UIViewController, UITextFieldDelegat
         return textField
     }()
 
-    private lazy var createTagConfirmButton = PomodoroConfirmButton(title: "태그 생성",
-                                                                    didTapHandler: saveTagButtonTapped)
+    private lazy var createTagConfirmButton = PomodoroConfirmButton(
+        title: "태그 생성",
+        didTapHandler: saveTagButtonTapped
+    )
 
     private let colorPaletteStackView = UIStackView().then {
         $0.axis = .horizontal
@@ -77,12 +84,10 @@ final class TagConfigurationViewController: UIViewController, UITextFieldDelegat
         $0.setImage(UIImage(named: "closeButton"), for: .normal)
     }
 
-    weak var delegate: TagCreationDelegate?
+    weak var delegate: TagConfigurationViewControllerDelegate?
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .pomodoro.background
-        navigationController?.isNavigationBarHidden = false
         setupViews()
         setupConstraints()
         setupColorPalette()
@@ -127,8 +132,18 @@ final class TagConfigurationViewController: UIViewController, UITextFieldDelegat
                     position: calculateNextPosition()
                 )
                 RealmService.write(newTag)
-                delegate?.createTag(tag: tagText, color: selectedColorIndex, position: newTag.position)
-                dismiss(animated: true, completion: nil)
+                RealmService.write(
+                    Tag(
+                        tagName: tagText,
+                        colorIndex: selectedColorIndex,
+                        position: newTag.position
+                    )
+                )
+                Log.info(
+                    "New tag created ==> Name: \(tagText), Color Index: \(selectedColorIndex), Position: \(newTag.position)"
+                )
+                delegate?.didAddNewTag()
+                dismiss(animated: true)
             }
         } catch {
             Log.info("태그 조회 실패: \(error)")
@@ -150,24 +165,15 @@ final class TagConfigurationViewController: UIViewController, UITextFieldDelegat
     }
 
     private func setupViews() {
+        view.backgroundColor = .pomodoro.background
         closeButton.addTarget(self, action: #selector(dismissModal), for: .touchUpInside)
-        let contentView = UIView().then {
-            $0.backgroundColor = .pomodoro.background
-            $0.layer.cornerRadius = 20
-            $0.addSubview(titleView)
-            $0.addSubview(closeButton)
-            $0.addSubview(titleLabel)
-            $0.addSubview(textField)
-            $0.addSubview(paletteTitleLabel)
-            $0.addSubview(createTagConfirmButton)
-            $0.addSubview(colorPaletteStackView)
-        }
-        dimmedView.addSubview(contentView)
-        view.addSubview(dimmedView)
-        contentView.snp.makeConstraints {
-            $0.leading.trailing.bottom.equalToSuperview()
-            $0.height.equalTo(view.frame.height * 0.8)
-        }
+        view.addSubview(titleView)
+        view.addSubview(closeButton)
+        view.addSubview(titleLabel)
+        view.addSubview(textField)
+        view.addSubview(paletteTitleLabel)
+        view.addSubview(createTagConfirmButton)
+        view.addSubview(colorPaletteStackView)
     }
 
     private func setupConstraints() {
@@ -178,10 +184,6 @@ final class TagConfigurationViewController: UIViewController, UITextFieldDelegat
         titleView.snp.makeConstraints {
             $0.centerX.equalToSuperview()
             $0.centerY.equalTo(closeButton.snp.centerY)
-        }
-
-        dimmedView.snp.makeConstraints {
-            $0.edges.equalToSuperview()
         }
 
         titleLabel.snp.makeConstraints { make in
@@ -311,16 +313,61 @@ final class TagConfigurationViewController: UIViewController, UITextFieldDelegat
     }
 }
 
-extension TagConfigurationViewController {
-    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
-        guard let text = textField.text else {
+extension TagConfigurationViewController: UITextFieldDelegate {
+    func textField(_ textField: UITextField, shouldChangeCharactersIn _: NSRange, replacementString string: String) -> Bool {
+        let maxLength = 4
+        let oldText = textField.text ?? ""
+        let addedText = string
+        let newText = oldText + addedText
+        let newTextLength = newText.count
+        if newTextLength <= maxLength {
             return true
         }
-        let newLength = text.count + string.count - range.length
-        return newLength <= 4
+
+        let lastWordOfOldText = String(oldText[oldText.index(before: oldText.endIndex)])
+        let separatedCharacters = lastWordOfOldText.decomposedStringWithCanonicalMapping.unicodeScalars.map { String($0) }
+        let separatedCharactersCount = separatedCharacters.count
+
+        if separatedCharactersCount == 1, !addedText.isConsonant { // -- A
+            return true
+        }
+
+        if separatedCharactersCount == 2, addedText.isConsonant { // -- B
+            return true
+        }
+
+        if separatedCharactersCount == 3, addedText.isConsonant { // -- C
+            return true
+        }
+
+        return false
+    }
+
+    func textFieldDidChangeSelection(_ textField: UITextField) {
+        let text = textField.text ?? ""
+        let maxLength = 4
+        if text.count > maxLength {
+            let startIndex = text.startIndex
+            let endIndex = text.index(startIndex, offsetBy: maxLength - 1)
+            let fixedText = String(text[startIndex ... endIndex])
+            textField.text = fixedText
+        }
     }
 
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         textField.resignFirstResponder()
+    }
+}
+
+extension String {
+    // 글자가 자음인지 체크
+    var isConsonant: Bool {
+        guard let scalar = UnicodeScalar(self)?.value else {
+            return false
+        }
+
+        let consonantScalarRange: ClosedRange<UInt32> = 12593 ... 12622
+
+        return consonantScalarRange ~= scalar
     }
 }

@@ -12,10 +12,6 @@ import SnapKit
 import Then
 import UIKit
 
-protocol TagCreationDelegate: AnyObject {
-    func createTag(tag: String, color: String, position: Int)
-}
-
 protocol TagModalViewControllerDelegate: AnyObject {
     func tagSelected(with tag: Tag)
     func tagDidRemoved(tagName: String)
@@ -37,7 +33,7 @@ final class TagModalViewController: UIViewController {
         $0.backgroundColor = .pomodoro.background
         $0.layer.cornerRadius = 15
         $0.clipsToBounds = true
-        $0.addTarget(self, action: #selector(createMinusButton), for: .touchUpInside)
+        $0.addTarget(self, action: #selector(didTapEditButton), for: .touchUpInside)
     }
 
     private let tagsStackView = UIStackView().then {
@@ -73,7 +69,7 @@ final class TagModalViewController: UIViewController {
         loadDefaultTagsIfNeeded()
         setupViews()
         closeButton.addTarget(self, action: #selector(dismissModal), for: .touchUpInside)
-        tagSettingCompletedButton.isEnabled = false // 첫 화면에는 설정완료 비활성화
+        tagSettingCompletedButton.isEnabled = false
         view.backgroundColor = .pomodoro.background
     }
 
@@ -121,7 +117,7 @@ final class TagModalViewController: UIViewController {
     }
 
     private func loadDefaultTagsIfNeeded() {
-        if UserDefaults.standard.bool(forKey: "isFirstVisit") {
+        if UserDefaults.standard.bool(forKey: "needOnboarding") {
             guard let tagCount = try? RealmService.read(Tag.self).count, tagCount == 0 else { return }
 
             let defaultTags = [
@@ -131,15 +127,11 @@ final class TagModalViewController: UIViewController {
             ]
 
             for tag in defaultTags {
-                do {
-                    RealmService.write(tag)
-                    Log.info("Added tag: \(tag.tagName)")
-                } catch {
-                    Log.info("Error preloading tag \(tag.tagName): \(error)")
-                }
+                RealmService.write(tag)
+                Log.info("Added tag: \(tag.tagName)")
             }
 
-            UserDefaults.standard.set(false, forKey: "isFirstVisit")
+            UserDefaults.standard.set(false, forKey: "needOnboarding")
         }
     }
 
@@ -181,6 +173,11 @@ final class TagModalViewController: UIViewController {
         tagsStackView.addArrangedSubview(firstRow)
         tagsStackView.addArrangedSubview(secondRow)
         tagsStackView.addArrangedSubview(thirdRow)
+        tagsStackView.layoutIfNeeded()
+
+        if isEditing {
+            updateRemoveButton()
+        }
     }
 
     private func createRoundButton(title: String, colorIndex: String, tagIndex: Int) -> UIButton {
@@ -244,16 +241,14 @@ final class TagModalViewController: UIViewController {
         }
     }
 
-    func selectTag(with tag: Tag) {
-        selectionDelegate?.tagSelected(with: tag)
-        dismiss(animated: true, completion: nil)
-    }
-
     @objc private func dismissModal() {
         dismiss(animated: true, completion: nil)
     }
 
     @objc func buttonTapped(tag: String, color _: String, sender: UIButton) {
+        if isEditing {
+            return
+        }
         if let tag = try? RealmService.read(Tag.self).filter("tagName == %@", tag).first {
             if selectedTag == tag {
                 selectedTag = nil
@@ -300,10 +295,21 @@ final class TagModalViewController: UIViewController {
     }
 
     @objc func presentTagEditViewController() {
+        selectedTag = nil
+        if let selectedTagButton {
+            animateButtonFade(selectedTagButton, fadeIn: false)
+            self.selectedTagButton = nil
+            updateSettingCompleteButtonState()
+        }
+
         let configureTagViewController = TagConfigurationViewController()
-        configureTagViewController.modalPresentationStyle = .fullScreen
+        configureTagViewController.delegate = self
+        if let sheet = configureTagViewController.sheetPresentationController {
+            sheet.detents = [.custom { $0.maximumDetentValue * 0.95 }]
+            sheet.preferredCornerRadius = 35
+            sheet.prefersScrollingExpandsWhenScrolledToEdge = true
+        }
         present(configureTagViewController, animated: true)
-        tagSettingCompletedButton.isEnabled.toggle()
     }
 
     @objc private func didTapSettingCompleteButton() {
@@ -332,7 +338,6 @@ final class TagModalViewController: UIViewController {
                                 Log.info("Tag at index \(tagIndex) deleted")
                                 selectionDelegate?.tagDidRemoved(tagName: tagToDelete.tagName)
                                 RealmService.delete(tagToDelete)
-                                tagSettingCompletedButton.isEnabled = true
                                 addTagsToStackView()
                             } else {
                                 Log.info("No tag found at index \(tagIndex)")
@@ -346,11 +351,18 @@ final class TagModalViewController: UIViewController {
             .show(on: self)
     }
 
-    @objc private func createMinusButton() {
-        tagSettingCompletedButton.isEnabled.toggle()
+    @objc private func didTapEditButton() {
+        tagSettingCompletedButton.isEnabled = false
+        isEditing.toggle()
+        updateRemoveButton()
+    }
+
+    private func updateRemoveButton() {
         for case let button as UIButton in tagsStackView.arrangedSubviews.flatMap(\.subviews) {
             if let minusButton = button.subviews.first(where: { subview in
-                guard let btn = subview as? UIButton else { return false }
+                guard let btn = subview as? UIButton else {
+                    return false
+                }
                 return btn.image(for: .normal) == UIImage(named: "minusButton")
             }) as? UIButton {
                 minusButton.isHidden.toggle()
@@ -362,9 +374,8 @@ final class TagModalViewController: UIViewController {
 
 // MARK: - TagCreationDelegate
 
-extension TagModalViewController: TagCreationDelegate {
-    func createTag(tag: String, color: String, position: Int) {
-        RealmService.write(Tag(tagName: tag, colorIndex: color, position: position))
-        Log.info("New tag created ==> Name: \(tag), Color Index: \(color), Position: \(position)")
+extension TagModalViewController: TagConfigurationViewControllerDelegate {
+    func didAddNewTag() {
+        addTagsToStackView()
     }
 }

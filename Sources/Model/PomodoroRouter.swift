@@ -103,6 +103,7 @@ final class PomodoroRouter {
                 currentStep = .focus(count: pomodoroCount)
             } else {
                 currentStep = .end
+                pomodoroCount = 0
                 currentStep = .start
             }
         case .end:
@@ -139,14 +140,14 @@ final class PomodoroStepTimeChange {
         switch currentStep {
         case .start:
             pomodoroTimeManager.setupCurrentTime(curr: 0)
-            pomodoroTimeManager.setupMaxTime(time: 0)
+            pomodoroTimeManager.setupFinishTime(time: 0)
         case .focus:
             pomodoroTimeManager.setupCurrentTime(curr: 0)
         case .rest:
             pomodoroTimeManager.setupCurrentTime(curr: 0)
         case .end:
             pomodoroTimeManager.setupCurrentTime(curr: 0)
-            pomodoroTimeManager.setupMaxTime(time: 0)
+            pomodoroTimeManager.setupFinishTime(time: 0)
         }
     }
 
@@ -161,12 +162,12 @@ final class PomodoroStepTimeChange {
 
     func initPomodoroStep() {
         PomodoroRouter.shared.pomodoroCount = 0
-        pomodoroTimeManager.setupMaxTime(time: 0)
+        pomodoroTimeManager.setupFinishTime(time: 0)
         pomodoroTimeManager.setupCurrentTime(curr: 0)
         currentStep = .start
         isFailedPomodoroStep()
 
-        Log.info(pomodoroTimeManager.maxTime, pomodoroTimeManager.currentTime)
+        Log.info(pomodoroTimeManager.finishTime, pomodoroTimeManager.currentTime)
         Log.info(currentStep)
     }
 

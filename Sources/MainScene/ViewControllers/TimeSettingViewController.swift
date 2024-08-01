@@ -23,12 +23,16 @@ final class TimeSettingViewController: UIViewController {
     private var endTime: String?
     private var isSelectedCellBiggerfive: Bool = true
     private let stepManager = PomodoroStepManger()
+    private lazy var breakTime = stepManager.timeSetting.setUpBreakTime()
 
     private weak var delegate: TimeSettingViewControllerDelegate?
 
     init(delegate: TimeSettingViewControllerDelegate) {
         super.init(nibName: nil, bundle: nil)
-        selectedTime = pomodoroTimeManager.maxTime
+
+        // MARK: 테스트용 ( 현재는 초 단위입니다. 실제로 사용하실 때 나누기 60 제외하면 됩니다.)
+
+        selectedTime = pomodoroTimeManager.finishTime / 60
         self.delegate = delegate
     }
 
@@ -172,7 +176,7 @@ final class TimeSettingViewController: UIViewController {
         let currentTime = Date()
 
         guard let endTime = Calendar.current.date(
-            byAdding: .second, value: selectedTime, to: currentTime
+            byAdding: .second, value: (selectedTime + breakTime) * 4, to: currentTime
         ) else {
             return
         }
@@ -181,7 +185,6 @@ final class TimeSettingViewController: UIViewController {
     }
 
     private func didTapConfirmButton() {
-        Log.debug("Selected Time: \(Int(centerIndexPath?.item ?? 0))")
         delegate?.didSelectTime(time: Int(centerIndexPath?.item ?? 0))
         dismiss(animated: true)
     }

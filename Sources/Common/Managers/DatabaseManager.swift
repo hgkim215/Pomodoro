@@ -13,7 +13,7 @@ enum RealmService {
     static func read<T: Object>(_ object: T.Type) throws -> Results<T> {
         do {
             let database = try Realm()
-            Log.info("Realm is located at: \(String(describing: database.configuration.fileURL))")
+//            Log.info("Realm is located at: \(String(describing: database.configuration.fileURL))")
             return database.objects(object)
         } catch {
             Log.error(error)
@@ -24,7 +24,7 @@ enum RealmService {
     static func createPomodoro(tag: Tag, phaseTime: Int) {
         do {
             let database = try Realm()
-            Log.info("Realm is located at: \(String(describing: database.configuration.fileURL))")
+//            Log.info("Realm is located at: \(String(describing: database.configuration.fileURL))")
             var id = 0
             if let lastPomodoro = database.objects(Pomodoro.self).last {
                 id = lastPomodoro.id + 1
@@ -57,7 +57,7 @@ enum RealmService {
     static func update<T: Object>(_ object: T, completion: @escaping ((T) -> Void)) {
         do {
             let database = try Realm()
-            Log.info("Realm is located at: \(String(describing: database.configuration.fileURL))")
+//            Log.info("Realm is located at: \(String(describing: database.configuration.fileURL))")
             try database.write {
                 completion(object)
             }
@@ -69,7 +69,7 @@ enum RealmService {
     static func delete(_ object: some Object) {
         do {
             let database = try Realm()
-            Log.info("Realm is located at: \(String(describing: database.configuration.fileURL))")
+//            Log.info("Realm is located at: \(String(describing: database.configuration.fileURL))")
             try database.write {
                 database.delete(object)
             }
@@ -81,7 +81,7 @@ enum RealmService {
     static func deleteAll() {
         do {
             let database = try Realm()
-            Log.info("Realm is located at: \(String(describing: database.configuration.fileURL))")
+//            Log.info("Realm is located at: \(String(describing: database.configuration.fileURL))")
             try database.write {
                 database.deleteAll()
             }
@@ -97,7 +97,7 @@ enum RealmService {
     ) throws -> Results<T> {
         do {
             let database = try Realm()
-            Log.info("Realm is located at: \(String(describing: database.configuration.fileURL))")
+//            Log.info("Realm is located at: \(String(describing: database.configuration.fileURL))")
             return database.objects(object).sorted(byKeyPath: keyPath, ascending: ascending)
         } catch {
             Log.error(error)

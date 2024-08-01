@@ -17,6 +17,7 @@ class Pomodoro: Object {
     @Persisted var currentTag: Tag? = Tag(tagName: "집중", colorIndex: "one", position: 0)
     @Persisted var participateDate: Date
     @Persisted var isSuccess: Bool
+    @Persisted var isIng: Bool
 
     convenience init(
         id: Int,
@@ -24,7 +25,8 @@ class Pomodoro: Object {
         phase: Int = 1,
         currentTag: Tag,
         participateDate: Date = Date.now,
-        isSuccess: Bool = false
+        isSuccess: Bool = false,
+        isIng: Bool = true
     ) {
         self.init()
         self.id = id
@@ -33,5 +35,6 @@ class Pomodoro: Object {
         self.currentTag = currentTag
         self.participateDate = participateDate
         self.isSuccess = isSuccess
+        self.isIng = isIng
     }
 }

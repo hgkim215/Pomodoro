@@ -21,32 +21,47 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         _: UIApplication,
         didFinishLaunchingWithOptions _: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        UNUserNotificationCenter.current().delegate = self
-
-        UNUserNotificationCenter.current().requestAuthorization(
-            options: [.alert, .sound, .badge],
-            completionHandler: { _, _ in }
+        pomodoroTimeManager.setupIsNeedRestore(
+            bool: UserDefaults.standard.bool(forKey: UserDefaultsKeys.isNeedRestore)
         )
+        Log.debug("앱 최초 실행 : isNeedRestored -> \(pomodoroTimeManager.isNeedRestore)")
+
+        UNUserNotificationCenter.current().delegate = self
+        UNUserNotificationCenter.current().requestAuthorization(
+            options: [.alert, .sound, .badge]
+        ) { granted, error in
+            if granted {
+            } else if let error {
+                print("Notification authorization error: \(error.localizedDescription)")
+            }
+        }
 
         if let defaultFont = UIFont(name: "BMHANNA11yrsoldOTF", size: 17) {
             let attributes = [NSAttributedString.Key.font: defaultFont]
             UINavigationBar.appearance().titleTextAttributes = attributes
         }
 
-        if UserDefaults.standard.bool(forKey: "isFirstVisit") {
-            UserDefaults.standard.set(false, forKey: "isFirstVisit")
+        let resentRealmData = try? RealmService.read(Pomodoro.self)
+        guard let resentRealmData else {
+            return true
         }
 
-        Log.debug("didFinishLaunching...")
-        pomodoroTimeManager.restoreTimerInfo()
+        if UserDefaults.standard.object(forKey: UserDefaultsKeys.isFirstVisit) == nil {
+            UserDefaults.standard.set(true, forKey: UserDefaultsKeys.isFirstVisit)
+            Log.info(UserDefaults.standard.bool(forKey: UserDefaultsKeys.isFirstVisit))
+        } else {
+            Log.info("Setting isFirstVisit")
+            Log.info(UserDefaults.standard.bool(forKey: UserDefaultsKeys.isFirstVisit))
+        }
         return true
     }
 
     // MARK: 앱이 종료될 때 함수
 
     func applicationWillTerminate(_: UIApplication) {
-        Log.debug("Terminate...")
-        pomodoroTimeManager.saveTimerInfo()
+        if pomodoroTimeManager.currentTime != 0 {
+            pomodoroTimeManager.saveTimerInfo()
+        }
     }
 
     func application(
@@ -69,6 +84,8 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         willPresent _: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
+        print("NOTIFICATION!")
+        pomodoroTimeManager.setupIsNeedRestore(bool: false)
         completionHandler([.badge, .banner, .list])
     }
 }
