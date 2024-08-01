@@ -361,6 +361,7 @@ final class TagModalViewController: UIViewController {
 }
 
 // MARK: - TagCreationDelegate
+
 extension TagModalViewController: TagCreationDelegate {
     func createTag(tag: String, color: String, position: Int) {
         RealmService.write(Tag(tagName: tag, colorIndex: color, position: position))

@@ -193,7 +193,7 @@ final class TimeSettingViewController: UIViewController {
 
 extension TimeSettingViewController: UICollectionViewDelegate, UICollectionViewDataSource {
     func collectionView(_: UICollectionView, numberOfItemsInSection _: Int) -> Int {
-        151
+        1501
     }
 
     func collectionView(

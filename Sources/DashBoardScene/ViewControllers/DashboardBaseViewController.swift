@@ -229,6 +229,7 @@ class DashboardBaseViewController: UIViewController {
 
         case .month:
             dateFormatter.dateFormat = "yyyy년 MM월"
+
         case .year:
             dateFormatter.dateFormat = "yyyy년"
         }
@@ -274,6 +275,7 @@ extension DashboardBaseViewController: UICollectionViewDataSource {
             cell.setPieChartData(for: selectedDate,
                                  dateType: dashboardDateType)
             return cell
+
         case .none:
             return UICollectionViewCell()
         }

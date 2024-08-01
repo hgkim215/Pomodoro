@@ -6,6 +6,7 @@
 //  Copyright © 2023 io.hgu. All rights reserved.
 //
 
+import OSLog
 import UIKit
 import UserNotifications
 
@@ -36,6 +37,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             UserDefaults.standard.set(false, forKey: "isFirstVisit")
         }
 
+        Log.debug("didFinishLaunching...")
         pomodoroTimeManager.restoreTimerInfo()
         return true
     }
@@ -43,6 +45,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     // MARK: 앱이 종료될 때 함수
 
     func applicationWillTerminate(_: UIApplication) {
+        Log.debug("Terminate...")
         pomodoroTimeManager.saveTimerInfo()
     }
 
