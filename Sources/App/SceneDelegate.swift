@@ -11,6 +11,7 @@ import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     let pomodoroTimeManager = PomodoroTimeManager.shared
+    var isInitialOpen = true
 
     var window: UIWindow?
 
@@ -43,13 +44,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             if let navController = window?.rootViewController as? UINavigationController,
                let mainPageViewController = navController.viewControllers.first as? MainPageViewController,
                let pageViewController = mainPageViewController.children.first as? UIPageViewController,
-               let mainViewController = pageViewController.viewControllers?.first(where: { $0 is MainViewController }) as? MainViewController
-            {
+               let mainViewController = pageViewController.viewControllers?.first(where: { $0 is MainViewController }) as? MainViewController {
                 print("\(mainViewController.isTimerRunning)")
-                if mainViewController.isTimerRunning == false {
+                if mainViewController.isTimerRunning == false, isInitialOpen {
                     print("START!!!")
+                    isInitialOpen = false
                     mainViewController.currentPomodoro = try? RealmService.read(Pomodoro.self).last
                     mainViewController.startTimer()
+                    mainViewController.setUpPomodoroCurrentStepLabel()
                 }
             } else {
                 Log.error("MainViewController를 찾을 수 없습니다.")

@@ -30,7 +30,7 @@ final class TimeSettingViewController: UIViewController {
     init(delegate: TimeSettingViewControllerDelegate) {
         super.init(nibName: nil, bundle: nil)
 
-        // MARK: 테스트용 ( 현재는 초 단위입니다. 실제로 사용하실 때 나누기 60 제외하면 됩니다.)
+        // MARK: 테스트용 ( 현재는 초 단위입니다. 실제로 사용하실 때 나누기 60 제외하면 될 것 같습니다.)
 
         selectedTime = pomodoroTimeManager.finishTime / 60
         self.delegate = delegate
